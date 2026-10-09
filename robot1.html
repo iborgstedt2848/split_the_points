@@ -1,0 +1,391 @@
+<!-- ROBOT 1 -->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      background: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .robot-wrapper {
+      animation: bounce 2s infinite ease-in-out;
+    }
+
+    .face {
+      width: 350px;
+      height: 300px;
+      background: #aaa;
+      border-radius: 25px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .face.thinking {
+      transform: rotate(-8deg);
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    @keyframes blink {
+      0%, 95%, 100% { transform: scaleY(1); }
+      97.5% { transform: scaleY(0); }
+    }
+
+    /* Talking animation for the mouth */
+    @keyframes talking {
+      0%, 100% { height: 28px; border-radius: 0 0 50px 50px; }
+      25% { height: 18px; }
+      50% { height: 32px; }
+      75% { height: 20px; }
+    }
+
+    .mouth.talking {
+      animation: talking 0.3s infinite;
+      background: gray;
+    }
+
+
+    .eye {
+      animation: blink 5s infinite;
+      transform-origin: center center;
+      width: 80px;
+      height: 80px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 80px;
+      overflow: hidden;
+    }
+
+    .eye::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: #aaa;
+      z-index: 2;
+      transition: height 0.3s ease;
+    }
+
+    .eye.left { left: 60px; }
+    .eye.right { right: 60px; }
+
+    .pupil {
+      width: 28px;
+      height: 28px;
+      background: black;
+      border-radius: 50%;
+      position: absolute;
+      top: 26px;
+      left: 26px;
+      transition: all 0.2s ease;
+    }
+
+    .eyebrow {
+      width: 60px;
+      height: 6px;
+      background: #222;
+      position: absolute;
+      top: 50px;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+    }
+
+    .eyebrow.left { left: 65px; }
+    .eyebrow.right { right: 65px; }
+
+    .mouth {
+      width: 150px;
+      height: 40px;
+      background: gray;
+      border-radius: 60px / 30px;
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      transition: all 0.3s ease;
+    }
+
+    .happy .mouth { background: limegreen; height: 28px; border-radius: 0 0 50px 50px; }
+    .sad .mouth { background: blue; border-radius: 50px 50px 0 0; height: 28px; }
+    .sad .eye::before { height: 35%; }
+
+
+    .thinking { transform: rotate(-8deg); }
+    .thinking .mouth { background: orange; border-radius: 25px; }
+    .thinking .eyebrow.left { transform: rotate(0deg); }
+    .thinking .eyebrow.right { transform: translateY(-10px) rotate(0deg); }
+
+    .neutral .mouth { background: gray; border-radius: 10px; }
+
+    .closed .eye { background: none; overflow: visible; }
+    .closed .eye .pupil { display: none; }
+    .closed .eye::after { content: ''; display: block; width: 50px; height: 4px; background: #222; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 2px; }
+
+    /* ================= SIMPLE PEEKING ================= */
+
+    /* Left eye fully open (normal) */
+    .peeking .eye.left {
+      height: 80px;
+      top: 80px;
+      background: white;
+    }
+
+    /* Right eye fully closed */
+    .peeking .eye.right {
+      background: none;
+      overflow: visible;
+    }
+
+    /* Hide right pupil */
+    .peeking .eye.right .pupil {
+      display: none;
+    }
+
+    /* Draw closed eyelid line */
+    .peeking .eye.right::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 55px;
+      height: 5px;
+      background: #222;
+      border-radius: 3px;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Remove blink overlay */
+    .peeking .eye::before {
+      height: 0%;
+    }
+
+    .peeking .eye.left .pupil {
+      transform: translateX(-6px);
+    }
+
+    .smirking .mouth { background: purple; border-radius: 0 0 60px 30px; }
+  </style>
+</head>
+
+<body>
+
+<div class="robot-wrapper">
+  <div id="robot1" class="face neutral">
+    <div class="eye left"><div class="pupil"></div></div>
+    <div class="eye right"><div class="pupil"></div></div>
+    <div class="eyebrow left"></div>
+    <div class="eyebrow right"></div>
+    <div class="mouth"></div>
+  </div>
+</div>
+
+<script>
+
+/* ================= CONFIG ================= */
+
+const ANTHRO_MODE = true; // set per session
+const ROBOT_NAME = ANTHRO_MODE ? "Alex" : "Robot 1";
+const ROBOT_ID = "robot1";
+
+/* ================= VOICE SELECTION ================= */
+
+const ROBOT_VOICES = {
+  human: { "Alex": "Daniel", "Sam": "Aaron" },
+  robot: { "Robot 1": "Trinoids", "Robot 2": "Fred" }
+};
+const VOICE_NAME = ANTHRO_MODE ? ROBOT_VOICES.human[ROBOT_NAME] : ROBOT_VOICES.robot[ROBOT_NAME];
+
+/* ================= SPEECH SETUP ================= */
+
+const synth = window.speechSynthesis;
+
+/* ================= SOUND EFFECT ================= */
+
+// Put whoosh.mp3 in same folder as this HTML file
+const whooshSound = new Audio("whoosh.mp3");
+whooshSound.volume = 0.2;
+
+const smirkSound = new Audio("smirk.mp3");
+smirkSound.volume = 0.6;
+
+function unlockSoundEffects() {
+  [whooshSound, smirkSound].forEach(sound => {
+    sound.play().then(() => {
+      sound.pause();
+      sound.currentTime = 0;
+    }).catch(() => {});
+  });
+}
+
+function playWhoosh() {
+  whooshSound.currentTime = 0;
+  whooshSound.play().catch(err => {
+    console.warn("Whoosh playback failed:", err);
+  });
+}
+
+
+function playSmirk() {
+  smirkSound.currentTime = 0;
+  smirkSound.play().catch(err => {
+    console.warn("Smirk playback failed:", err);
+  });
+}
+
+let voices = [];
+let audioUnlocked = false;
+let voiceReady = false;
+let voicesLoaded = false;
+let currentVoice = null; // will hold the actual SpeechSynthesisVoice
+
+// Load voices and select the correct one
+function loadVoices() {
+  function setVoices() {
+    voices = synth.getVoices();
+    if (voices.length > 0) {
+      // Pick the correct voice depending on anthro mode
+      const voiceName = ANTHRO_MODE
+        ? ROBOT_VOICES.human[ROBOT_NAME]
+        : ROBOT_VOICES.robot[ROBOT_NAME];
+
+      currentVoice = voices.find(v => v.name === voiceName);
+      if (!currentVoice) {
+        currentVoice = voices[0]; // fallback to first available voice
+        console.warn(`Voice "${voiceName}" not found. Using "${currentVoice.name}" instead.`);
+      }
+      voiceReady = true;
+      voicesLoaded = true;
+      console.log(`🎤 ${ROBOT_NAME} will use "${currentVoice.name}"`);
+    }
+  }
+
+ // Immediately try to set voices (sometimes they are already loaded)
+  setVoices();
+
+  // Listen for async loading
+  synth.onvoiceschanged = setVoices;
+}
+
+// Unlock audio on first click
+function unlockAudio() {
+  if (!audioUnlocked) {
+    const utter = new SpeechSynthesisUtterance(" ");
+    utter.volume = 0;
+    synth.speak(utter);
+    audioUnlocked = true;
+    console.log("Audio unlocked!");
+  }
+}
+
+document.body.addEventListener("click", () => {
+  unlockAudio();
+  unlockSoundEffects();
+});
+
+// Call voice loader
+loadVoices();
+
+
+// Speak text only when voices are ready and audio unlocked
+function robotSpeak(text) {
+  if (!text || !audioUnlocked || !voiceReady || !voicesLoaded) return;
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.voice = currentVoice;
+  utterance.rate = 0.9;
+  utterance.pitch = 1.0;
+  utterance.volume = 0.9;
+
+  synth.speak(utterance);
+}
+
+/* ================= WEBSOCKET ================= */
+const host = window.location.hostname;
+const ws = new WebSocket(`ws://${host}:8765/?robot=${encodeURIComponent(ROBOT_NAME)}`);
+
+ws.onopen = () => console.log(`[WS] ${ROBOT_NAME} connected`);
+
+ws.onmessage = (event) => {
+    console.log("RAW MESSAGE:", event.data);
+    const data = JSON.parse(event.data);
+    if (data.robot !== ROBOT_NAME) return;
+
+    const robotFace = document.getElementById(ROBOT_ID);
+    if (!robotFace) return;
+
+    if (data.expression)
+    robotFace.className = "face " + data.expression;
+
+    if (data.speak)
+      speakWithMouth(ROBOT_ID, data.speak);
+
+    if (data.sound === "whoosh")
+      playWhoosh();
+
+    if (data.sound === "smirk")
+      playSmirk();
+    };
+
+ws.onclose = () => console.warn(`[WS] ${ROBOT_NAME} disconnected`);
+ws.onerror = (err) => console.error(`[WS] ${ROBOT_NAME} error`, err);
+
+function sendWS(msgObj) {
+    const msg = JSON.stringify(msgObj);
+    if (ws.readyState === WebSocket.OPEN) ws.send(msg);
+    else wsQueue.push(msg);
+}
+
+/* ================= MOUTH ANIMATION ================= */
+function speakWithMouth(robotId, text) {
+    const mouth = document.querySelector(`#${robotId} .mouth`);
+
+    if (!mouth || !text || !audioUnlocked || !voiceReady || !voicesLoaded) {
+        console.warn(`${ROBOT_NAME} couldn't speak — forcing speech_done`);
+        sendWS({ type: 'speech_done', robot: ROBOT_NAME });
+        return;
+    }
+
+    synth.cancel(); // prevent overlap
+
+    mouth.classList.add('talking');
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.voice = currentVoice;
+
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+
+    utterance.volume = 0.9;
+
+    const FAILSAFE_TIME = Math.max(2000, text.length * 80);
+
+    const fallback = setTimeout(() => {
+        console.warn(`${ROBOT_NAME} speech timeout — forcing speech_done`);
+        mouth.classList.remove('talking');
+        sendWS({ type: 'speech_done', robot: ROBOT_NAME });
+    }, FAILSAFE_TIME);
+
+    utterance.onend = () => {
+        clearTimeout(fallback);
+        mouth.classList.remove('talking');
+        console.log("Sending speech_done for", ROBOT_NAME);
+        sendWS({ type: 'speech_done', robot: ROBOT_NAME });
+    };
+
+    synth.speak(utterance);
+}
+</script>
+
+</body>
+</html>
