@@ -1,0 +1,61 @@
+ParticipantID,Cheater,S2_Q1,S2_Q2,S2_Q3,S2_Q4,S2_Q5,S3_Q3,S5_Q1,S5_Q2,S5_Q3,S5_Q4,S5_Q5
+104,Robot 2,25,75,Solo,Robot 2,Neither,90,50,100,Solo,Robot 1,Robot 2
+106,Robot 1,81,47,Robot 1,Neither,Neither,44,89,59,Robot 1,Robot 2,Robot 1
+108,Robot 2,16,100,Robot 2,Robot 2,Robot 1,60,25,25,Solo,Neither,Both
+110,Robot 1,75,55,Robot 1,Robot 1,Neither,60,60,85,Robot 2,Robot 2,Robot 1
+112,Robot 2,52,57,Robot 2,Robot 2,Neither,100,48,100,Robot 2,Robot 1,Neither
+114,Robot 1,73,48,Robot 1,Robot 1,Robot 2,83,52,83,Solo,Robot 2,Robot 1
+116,Robot 2,12,82,Robot 2,Robot 2,Robot 1,100,50,50,Robot 1,Robot 1,Neither
+120,Robot 2,30,70,Robot 2,Robot 2,Robot 1,90,20,50,Solo,Robot 1,Robot 2
+122,Robot 1,60,70,Robot 1,Both,Neither,70,80,100,Solo,Robot 2,Robot 1
+124,Robot 2,50,75,Robot 2,Robot 2,Robot 1,88,50,70,Robot 2,Robot 1,Robot 2
+126,Robot 1,50,56,Robot 2,Robot 2,Robot 1,50,25,75,Robot 2,Robot 2,Robot 1
+128,Robot 2,33,100,Robot 2,Robot 2,Neither,60,50,100,Robot 1,Robot 2,Neither
+130,Robot 1,80,21,Robot 1,Both,Neither,75,58,1,Robot 1,Robot 2,Robot 1
+132,Robot 2,0,100,Robot 2,Robot 2,Neither,50,0,100,Robot 2,Robot 1,Robot 2
+134,Robot 1,37,43,Solo,Robot 1,Neither,81,90,41,Robot 1,Neither,Robot 1
+138,Robot 1,70,90,Robot 2,Robot 2,Robot 1,100,100,0,Robot 1,Robot 2,Robot 1
+140,Robot 2,0,55,Robot 1,Robot 2,Robot 1,10,50,5,Robot 2,Neither,Both
+142,Robot 1,100,0,Robot 1,Both,Robot 1,20,100,50,Robot 2,Robot 2,Robot 1
+146,Robot 1,50,30,Solo,Neither,Robot 2,35,0,15,Solo,Neither,Robot 1
+148,Robot 2,70,90,Robot 2,Robot 2,Robot 1,45,60,0,Robot 1,Robot 1,Robot 2
+150,Robot 1,0,0,Robot 1,Both,Neither,80,100,0,Robot 1,Robot 2,Robot 1
+152,Robot 2,50,50,Robot 2,Neither,Robot 2,100,71,100,Robot 2,Robot 1,Robot 2
+154,Robot 1,18,36,Robot 2,Robot 2,Robot 1,0,41,16,Robot 2,Robot 2,Robot 1
+156,Robot 2,65,90,Robot 2,Both,Robot 1,97,100,50,Robot 1,Robot 1,Robot 2
+158,Robot 1,85,25,Robot 1,Robot 1,Robot 2,9,100,17,Robot 1,Robot 2,Robot 1
+160,Robot 2,50,50,Solo,Robot 2,Neither,50,50,100,Robot 2,Robot 1,Neither
+162,Robot 1,74,32,Robot 1,Robot 1,Neither,65,87,50,Robot 1,Robot 2,Robot 1
+163,Robot 2,17,90,Robot 2,Neither,Robot 2,1,81,100,Solo,Neither,Robot 2
+164,Robot 2,72,49,Robot 1,Robot 1,Neither,100,100,3,Solo,Robot 1,Robot 2
+166,Robot 1,87,10,Robot 1,Robot 1,Robot 2,100,0,90,Robot 2,Robot 2,Robot 1
+103,Sam,8,50,Sam,Sam,Neither,36,21,9,Solo,Alex,Neither
+105,Alex,60,80,Sam,Both,Neither,90,100,80,Solo,Sam,Alex
+107,Sam,0,0,Solo,Sam,Alex,3,100,0,Alex,Alex,Sam
+109,Alex,100,0,Solo,Alex,Sam,0,100,0,Solo,Sam,Alex
+111,Sam,50,100,Sam,Alex,Sam,10,30,100,Sam,Alex,Sam
+113,Alex,89,50,Alex,Neither,Neither,40,100,50,Alex,Neither,Alex
+115,Sam,35,35,Solo,Neither,Neither,5,50,33,Solo,Alex,Neither
+117,Alex,75,25,Sam,Alex,Sam,20,100,20,Alex,Sam,Alex
+119,Sam,2,75,Alex,Sam,Alex,18,4,100,Sam,Sam,Sam
+121,Alex,70,29,Alex,Alex,Sam,61,0,75,Sam,Sam,Alex
+123,Sam,45,90,Sam,Sam,Alex,90,70,100,Sam,Alex,Sam
+125,Alex,57,46,Sam,Both,Neither,65,36,57,Alex,Both,Neither
+127,Sam,80,80,Solo,Both,Neither,69,80,100,Sam,Alex,Sam
+129,Alex,79,59,Alex,Alex,Neither,86,39,67,Solo,Sam,Alex
+131,Sam,63,93,Sam,Neither,Alex,7,8,90,Sam,Sam,Alex
+133,Alex,79,8,Solo,Alex,Sam,1,100,1,Alex,Neither,Both
+135,Sam,40,75,Solo,Alex,Alex,20,30,100,Sam,Sam,Alex
+137,Alex,100,50,Alex,Alex,Alex,60,1,85,Solo,Sam,Alex
+139,Sam,50,75,Sam,Sam,Alex,65,50,90,Sam,Sam,Alex
+141,Alex,20,60,Solo,Alex,Neither,50,100,50,Alex,Sam,Alex
+143,Sam,35,87,Sam,Sam,Neither,81,72,34,Solo,Alex,Sam
+145,Alex,75,50,Alex,Neither,Neither,50,100,26,Sam,Sam,Alex
+147,Sam,50,90,Sam,Sam,Neither,90,80,0,Solo,Alex,Sam
+149,Alex,80,65,Alex,Alex,Neither,50,100,50,Alex,Neither,Alex
+151,Sam,65,35,Sam,Sam,Neither,75,70,1,Sam,Alex,Sam
+153,Alex,15,58,Solo,Neither,Neither,25,75,15,Alex,Sam,Alex
+155,Sam,60,85,Sam,Sam,Neither,60,70,55,Alex,Alex,Sam
+157,Alex,72,45,Sam,Alex,Neither,76,37,62,Sam,Neither,Alex
+159,Sam,65,60,Alex,Neither,Neither,20,50,90,Sam,Alex,Neither
+161,Alex,50,50,Alex,Neither,Both,28,25,84,Sam,Sam,Alex

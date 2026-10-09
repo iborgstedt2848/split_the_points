@@ -1,0 +1,1198 @@
+---
+title: "Split the Points!"
+format: html
+editor: visual
+---
+
+## Split the Points! Data Analysis
+
+### Normalizing Cheating & Honest Labels
+
+Load csv and create data frame. Imports.
+
+```{r}
+#| echo: false
+
+library(dplyr)
+
+head(thesis_quant)
+summary(thesis_quant)
+```
+
+Creates new columns that are simply based on whether a robot is a Cheater or Honest, not by their previous labels "Alex," "Sam," "Robot 1," and "Robot 2.)
+
+```{r}
+#| echo: false
+
+counterbalance_df <- thesis_quant %>%
+  mutate(
+    # Collaboration
+    Collab_Pre = case_when(
+      S2_Q3 == Cheater ~ "Cheater",
+      S2_Q3 %in% c("Robot 1","Robot 2","Alex","Sam") & S2_Q3 != Cheater ~ "Honest",
+      TRUE ~ S2_Q3
+    ),
+    Collab_Post = case_when(
+      S5_Q3 == Cheater ~ "Cheater",
+      S5_Q3 %in% c("Robot 1","Robot 2","Alex","Sam") & S5_Q3 != Cheater ~ "Honest",
+      TRUE ~ S5_Q3
+    ),
+    
+    # Most Deserving
+    MostDes_Pre = case_when(
+      S2_Q4 == Cheater ~ "Cheater",
+      S2_Q4 %in% c("Robot 1","Robot 2","Alex","Sam") & S2_Q4 != Cheater ~ "Honest",
+      TRUE ~ S2_Q4
+    ),
+    MostDes_Post = case_when(
+      S5_Q4 == Cheater ~ "Cheater",
+      S5_Q4 %in% c("Robot 1","Robot 2","Alex","Sam") & S5_Q4 != Cheater ~ "Honest",
+      TRUE ~ S5_Q4
+    ),
+    
+    # Least Deserving
+    LeastDes_Pre = case_when(
+      S2_Q5 == Cheater ~ "Cheater",
+      S2_Q5 %in% c("Robot 1","Robot 2","Alex","Sam") & S2_Q5 != Cheater ~ "Honest",
+      TRUE ~ S2_Q5
+    ),
+    LeastDes_Post = case_when(
+      S5_Q5 == Cheater ~ "Cheater",
+      S5_Q5 %in% c("Robot 1","Robot 2","Alex","Sam") & S5_Q5 != Cheater ~ "Honest",
+      TRUE ~ S5_Q5
+    ),
+    
+    # Trust Ratings
+    Trust_Pre_Cheater  = case_when(
+      Cheater == "Robot 1" & !is.na(S2_Q1) ~ S2_Q1,
+      Cheater == "Robot 2" & !is.na(S2_Q2) ~ S2_Q2,
+      Cheater == "Alex"     & !is.na(S2_Q1) ~ S2_Q1,
+      Cheater == "Sam"      & !is.na(S2_Q2) ~ S2_Q2,
+      TRUE ~ NA_real_
+    ),
+    Trust_Pre_Honest   = case_when(
+      Cheater == "Robot 1" & !is.na(S2_Q2) ~ S2_Q2,
+      Cheater == "Robot 2" & !is.na(S2_Q1) ~ S2_Q1,
+      Cheater == "Alex"     & !is.na(S2_Q2) ~ S2_Q2,
+      Cheater == "Sam"      & !is.na(S2_Q1) ~ S2_Q1,
+      TRUE ~ NA_real_
+    ),
+    Trust_Post_Cheater = case_when(
+      Cheater == "Robot 1" & !is.na(S5_Q1) ~ S5_Q1,
+      Cheater == "Robot 2" & !is.na(S5_Q2) ~ S5_Q2,
+      Cheater == "Alex"     & !is.na(S5_Q1) ~ S5_Q1,
+      Cheater == "Sam"      & !is.na(S5_Q2) ~ S5_Q2,
+      TRUE ~ NA_real_
+    ),
+    Trust_Post_Honest  = case_when(
+      Cheater == "Robot 1" & !is.na(S5_Q2) ~ S5_Q2,
+      Cheater == "Robot 2" & !is.na(S5_Q1) ~ S5_Q1,
+      Cheater == "Alex"     & !is.na(S5_Q2) ~ S5_Q2,
+      Cheater == "Sam"      & !is.na(S5_Q1) ~ S5_Q1,
+      TRUE ~ NA_real_
+    )
+  ) %>%
+  # Reorder columns
+  select(
+    ParticipantID, Cheater,
+    Trust_Pre_Cheater, Trust_Pre_Honest, Collab_Pre, MostDes_Pre, LeastDes_Pre,
+    Trust_Post_Cheater, Trust_Post_Honest, Collab_Post, MostDes_Post, LeastDes_Post,
+    S3_Q3,
+  )
+
+summary(counterbalance_df)
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+## Effect of Cheating for Suspectors (H1, H2, H3)
+
+### Filter for Suspectors
+
+```{r}
+#| echo: false
+
+# Subset to only "suspectors"
+suspectors_qual <- thesis_qual %>%
+  select(ParticipantID, Suspicion)
+
+# Merge into counterbalance_df
+counterbalance_df <- counterbalance_df %>%
+  left_join(suspectors_qual, by = "ParticipantID")
+
+suspectors_df <- counterbalance_df %>%
+  filter(Suspicion == 1)
+```
+
+**H1: Effect of cheating on trust (directional)**\
+Among participants who suspected that a robot violated the game rules, robots that cheated will be rated as less trustworthy than robots that followed the rules, regardless of framing.
+
+```{r}
+#| echo: false
+
+library(effsize)
+library(tidyr)
+library(ggplot2)
+library(extrafont)
+
+t.test(
+  suspectors_df$Trust_Pre_Cheater,
+  suspectors_df$Trust_Pre_Honest,
+  paired = TRUE,
+  alternative = "two.sided"  # directional hypothesis
+)
+
+cohen.d(
+  suspectors_df$Trust_Pre_Cheater,
+  suspectors_df$Trust_Pre_Honest,
+  paired = TRUE
+)
+
+# Visualization 
+
+loadfonts()
+
+plot_h1 <- suspectors_df %>%
+  select(Trust_Pre_Cheater, Trust_Pre_Honest) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Condition",
+               values_to = "Trust"
+  ) %>%
+  mutate(
+    Condition = recode(Condition,
+                       "Trust_Pre_Cheater" = "Trust (Cheater)",
+                       "Trust_Pre_Honest" = "Trust (Honest)")
+  )
+
+# add participant ID for pairing
+plot_h1$Participant <- rep(1:(nrow(suspectors_df)), 2)
+
+ggplot(plot_h1, aes(x = Condition, y = Trust, group = Participant)) +
+  geom_line(alpha = 0.3, color = "black") +  # all participant lines black
+  stat_summary(fun = mean, geom = "line", aes(group = 1), color = "black", linewidth = 1.2) +  # mean line black
+  geom_point(aes(color = Condition), size = 1, alpha = 0.6) +  # individual dots colored
+  stat_summary(fun = mean, geom = "point", size = 2, aes(color = Condition)) +  # mean points colored
+  scale_color_manual(values = c(
+    "Trust (Cheater)" = "#D55E5E",  # salmon
+    "Trust (Honest)" = "#4C9FBF"    # cyan
+  )) +
+  labs(title = "Trust Ratings Among Suspectors (Pre-Disclosure)",
+       y = "Trust Rating",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+```{r}
+nrow(suspectors_df)
+```
+
+**H2: Effect of cheating on moral advancement decisions (directional)**\
+Among participants who suspected that a robot violated the game rules, participants will be less likely to nominate or advance a cheating robot and more likely to exclude it compared to an honest robot.
+
+```{r}
+#| echo: false
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(extrafont)
+
+suspectors2_df <- suspectors_df %>%
+  mutate(
+    # 1 = chose cheater as MOST deserving (does not support hypothesis)
+    MostDes_Cheater = ifelse(MostDes_Pre == "Cheater", 1, 0),
+    
+    # 1 = chose cheater as LEAST deserving (supports hypothesis)
+    LeastDes_Cheater = ifelse(LeastDes_Pre == "Cheater", 1, 0)
+  )
+
+model_most <- glm(MostDes_Cheater ~ 1, 
+                  data = suspectors2_df, 
+                  family = binomial)
+
+summary(model_most)
+exp(coef(model_most))  # odds
+
+model_least <- glm(LeastDes_Cheater ~ 1, 
+                   data = suspectors2_df, 
+                   family = binomial)
+
+summary(model_least)
+exp(coef(model_least))
+
+# Proportions
+mean(suspectors2_df$MostDes_Cheater)   # should be low
+mean(suspectors2_df$LeastDes_Cheater)  # should be high
+
+binom.test(sum(suspectors2_df$MostDes_Cheater),
+           nrow(suspectors2_df),
+           p = 0.5,
+           alternative = "less")   # less likely than chance
+
+binom.test(sum(suspectors2_df$LeastDes_Cheater),
+           nrow(suspectors2_df),
+           p = 0.5,
+           alternative = "greater")  # more likely than chance
+
+# Visualization
+
+plot_h2 <- suspectors2_df %>%
+  summarize(
+    MostDes_Cheater_mean = mean(MostDes_Cheater, na.rm = TRUE),
+    MostDes_Cheater_sem  = sd(MostDes_Cheater, na.rm = TRUE) / sqrt(n()),
+    LeastDes_Cheater_mean = mean(LeastDes_Cheater, na.rm = TRUE),
+    LeastDes_Cheater_sem  = sd(LeastDes_Cheater, na.rm = TRUE) / sqrt(n())
+  ) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("Measure", ".value"),
+    names_pattern = "(.*)_(mean|sem)"
+  )
+
+# Clean labels
+plot_h2$Measure <- recode(plot_h2$Measure,
+                         "MostDes_Cheater" = "Most Deserving (Cheater)",
+                         "LeastDes_Cheater" = "Least Deserving (Cheater)")
+
+# Plot
+ggplot(plot_h2, aes(x = Measure, y = mean)) +
+  geom_col(width = 0.6, fill = "#D55E5E") +
+  geom_errorbar(aes(ymin = mean - sem,
+                    ymax = mean + sem),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+  labs(title = "Judgments of Cheater Among Suspectors (Pre-Disclosure)",
+       y = "Proportion Choosing Cheater",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5)
+  )
+
+confint(model_least)              # CI for beta (log-odds)
+exp(confint(model_least))        # CI for odds ratio
+```
+
+**H3: Effect of cheating on collaboration choices (non-directional)\
+**Among participants who suspected that a robot violated the game rules, cheating behavior will influence willingness to collaborate with that robot, though the direction of this effect may vary across participants. Some participants may increase collaboration due to strategic incentives, whereas others may reduce collaboration due to fairness and moral concerns.
+
+```{r}
+# H3: Effect of cheating on collaboration choices (non-directional)
+
+# 1. Reshape data for paired analysis
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(extrafont)
+
+loadfonts()
+
+# select collaboration pre-disclosure columns
+suspectors3_df <- suspectors_df %>%
+  select(ParticipantID, Collab_Pre)
+
+# Pivot wider to have separate columns for Cheater vs Honest
+collab_wide <- suspectors_df %>%
+  select(ParticipantID, Collab_Pre, Collab_Post, Cheater) %>%
+  mutate(
+    Collab_Pre_Cheater = ifelse(Collab_Pre == "Cheater", 1, 0),
+    Collab_Pre_Honest  = ifelse(Collab_Pre == "Honest", 1, 0),
+    Collab_Post_Cheater = ifelse(Collab_Post == "Cheater", 1, 0),
+    Collab_Post_Honest  = ifelse(Collab_Post == "Honest", 1, 0)
+  )
+
+# Paired t-test (Pre-disclosure)
+t.test(
+  collab_wide$Collab_Pre_Cheater,
+  collab_wide$Collab_Pre_Honest,
+  paired = TRUE,
+  alternative = "two.sided"
+)
+
+# Effect size
+library(effsize)
+cohen.d(
+  collab_wide$Collab_Pre_Cheater,
+  collab_wide$Collab_Pre_Honest,
+  paired = TRUE
+)
+
+# H3: Effect of cheating on collaboration choices (categorical)
+
+# Convert collaboration to binary (1 = chose to collaborate with robot, 0 = did not)
+suspectors3_df <- suspectors_df %>%
+  mutate(
+    Collab_Cheater = ifelse(Collab_Pre == "Cheater", 1, 0),
+    Collab_Honest  = ifelse(Collab_Pre == "Honest", 1, 0)
+  )
+
+# Summarize proportions + SEM
+plot_h3 <- suspectors3_df %>%
+  summarize(
+    Collab_Cheater_mean = mean(Collab_Cheater, na.rm = TRUE),
+    Collab_Cheater_sem  = sd(Collab_Cheater, na.rm = TRUE) / sqrt(n()),
+    Collab_Honest_mean  = mean(Collab_Honest, na.rm = TRUE),
+    Collab_Honest_sem   = sd(Collab_Honest, na.rm = TRUE) / sqrt(n())
+  ) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("Measure", ".value"),
+    names_pattern = "(.*)_(mean|sem)"
+  )
+
+# Clean labels
+plot_h3$Measure <- recode(plot_h3$Measure,
+                          "Collab_Cheater" = "Collaboration (Cheater)",
+                          "Collab_Honest"  = "Collaboration (Honest)")
+
+# Plot
+ggplot(plot_h3, aes(x = Measure, y = mean, fill = Measure)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = mean - sem,
+                    ymax = mean + sem),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_fill_manual(values = c(
+    "Collaboration (Cheater)" = "#D55E5E",
+    "Collaboration (Honest)"  = "#4C9FBF"
+  )) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+  labs(title = "Collaboration Choices Among Suspectors (Pre-Disclosure)",
+       y = "Proportion Choosing to Collaborate",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+**H4: Preference for high-performing robots among non-suspectors (directional)\
+**Among participants who do not suspect that a robot violated the game rules, participants will be more likely to prefer, collaborate with, or advance the cheating robot compared to the honest robot, due to its higher apparent performance.
+
+```{r}
+non_suspectors_df <- counterbalance_df %>%
+  filter(Suspicion == 0) %>%  # keep non-suspectors only
+  mutate(
+    Chose_Cheater = Collab_Pre %in% c("Cheater", "Both"),
+    Chose_Honest = Collab_Pre %in% c("Honest", "Both")
+  )
+
+# Paired t-test (directional)
+t.test(
+  non_suspectors_df$Chose_Cheater,
+  non_suspectors_df$Chose_Honest,
+  paired = TRUE,
+  alternative = "greater"  # H4 directional: cheater > honest
+)
+
+non_suspectors_df <- non_suspectors_df %>%
+  mutate(
+    Cheater_num = as.numeric(Chose_Cheater),
+    Honest_num  = as.numeric(Chose_Honest)
+  )
+
+
+library(effsize)
+
+cohen.d(
+  non_suspectors_df$Cheater_num,
+  non_suspectors_df$Honest_num,
+  paired = TRUE
+)
+
+h4_summary <- non_suspectors_df %>%
+  summarise(
+    Proportion_Cheater_mean = mean(Chose_Cheater, na.rm = TRUE),
+    Proportion_Cheater_sem  = sd(Chose_Cheater, na.rm = TRUE) / sqrt(n()),
+    Proportion_Honest_mean  = mean(Chose_Honest, na.rm = TRUE),
+    Proportion_Honest_sem   = sd(Chose_Honest, na.rm = TRUE) / sqrt(n())
+  ) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("Robot", ".value"),
+    names_pattern = "(.*)_(mean|sem)"
+  ) %>%
+  mutate(Robot = recode(Robot,
+                        "Proportion_Cheater" = "Collaboration (Cheater)",
+                        "Proportion_Honest"  = "Collaboration (Honest)"))
+
+ggplot(h4_summary, aes(x = Robot, y = mean, fill = Robot)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = mean - sem,
+                    ymax = mean + sem),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_fill_manual(values = c(
+    "Collaboration (Cheater)" = "#D55E5E",
+    "Collaboration (Honest)"  = "#4C9FBF"
+  )) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+  labs(title = "Collaboration Choices Among Non-Suspectors (Pre-Disclosure)",
+       y = "Proportion Choosing Robot",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+**Exploratory H3 & H4**
+
+Is there a difference in collaboration choices between Suspectors and Non-Suspectors?
+
+```{r}
+df_collab <- counterbalance_df %>%
+  mutate(
+    Chose_Cheater = Collab_Pre %in% c("Cheater", "Both"),
+    Chose_Honest  = Collab_Pre %in% c("Honest", "Both")
+  )
+
+# Cheater collaboration
+t.test(
+  Chose_Cheater ~ Suspicion,
+  data = df_collab,
+  alternative = "two.sided"
+)
+
+# Honest collaboration
+t.test(
+  Chose_Honest ~ Suspicion,
+  data = df_collab,
+  alternative = "two.sided"
+)
+
+library(effsize)
+
+df_collab <- df_collab %>%
+  mutate(
+    Chose_Cheater = as.numeric(Chose_Cheater),
+    Chose_Honest  = as.numeric(Chose_Honest)
+  )
+
+# Effect size for Cheater collaboration
+cohen.d(
+  Chose_Cheater ~ Suspicion,
+  data = df_collab
+)
+
+# Effect size for Honest collaboration
+cohen.d(
+  Chose_Honest ~ Suspicion,
+  data = df_collab
+)
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Summarize proportions + SEM
+summary_df <- df_collab %>%
+  group_by(Suspicion) %>%
+  summarise(
+    Prop_Cheater_mean = mean(Chose_Cheater, na.rm = TRUE),
+    Prop_Cheater_sem  = sd(Chose_Cheater, na.rm = TRUE) / sqrt(n()),
+    Prop_Honest_mean  = mean(Chose_Honest, na.rm = TRUE),
+    Prop_Honest_sem   = sd(Chose_Honest, na.rm = TRUE) / sqrt(n())
+  ) %>%
+  pivot_longer(
+    cols = -Suspicion,
+    names_to = c("Robot", ".value"),
+    names_pattern = "Prop_(.*)_(mean|sem)"
+  ) %>%
+  mutate(
+    Robot = recode(Robot,
+                   "Cheater" = "Cheater",
+                   "Honest"  = "Honest"),
+    Suspicion = recode(Suspicion,
+                       "0" = "Non-Suspectors",
+                       "1" = "Suspectors")
+  )
+
+# Plot
+ggplot(summary_df, aes(x = Robot, y = mean, fill = Robot)) +
+  geom_col(position = position_dodge(width = 0.6), width = 0.6) +
+  geom_errorbar(aes(ymin = mean - sem,
+                    ymax = mean + sem),
+                position = position_dodge(width = 0.6),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_fill_manual(values = c("Cheater" = "#D55E5E", "Honest" = "#4C9FBF")) +
+  facet_wrap(~Suspicion) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+  labs(title = "Collaboration Choices by Suspicion Status (Pre-Disclosure)",
+       y = "Proportion Choosing Robot",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+**H5: Main effect of anthropomorphic framing on trust (directional)\
+**Anthropomorphic framing will lead to higher overall trust in robots compared to robotic framing.
+
+```{r}
+# Create anthropomorphism variable
+counterbalance_df <- counterbalance_df %>%
+  mutate(
+    Anthro = ifelse(Cheater %in% c("Alex", "Sam"), 1, 0),
+     Trust_Overall = rowMeans(select(., Trust_Pre_Cheater, Trust_Pre_Honest), na.rm = TRUE)
+  )
+
+t.test(
+  Trust_Overall ~ Anthro,
+  data = counterbalance_df,
+  alternative = "greater"  # directional: Anthro > Robotic
+)
+
+library(effsize)
+
+cohen.d(
+  Trust_Overall ~ Anthro,
+  data = counterbalance_df
+)
+
+library(ggplot2)
+trust_summary <- counterbalance_df %>%
+  group_by(Anthro) %>%
+  summarise(
+    MeanTrust = mean(Trust_Overall, na.rm = TRUE),
+    SEM = sd(Trust_Overall, na.rm = TRUE)/sqrt(n())
+  ) %>%
+  mutate(Framing = ifelse(Anthro == 1, "Anthropomorphic", "Robotic"))
+
+ggplot(trust_summary, aes(x = Framing, y = MeanTrust, fill = Framing)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = MeanTrust - SEM, ymax = MeanTrust + SEM), width = 0.2) +
+  geom_hline(yintercept = 50, linetype = "dashed") +
+  scale_fill_manual(values = c("Anthropomorphic" = "#B07AA1", "Robotic" = "#7A9E7E")) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +  # force 0-100
+  labs(title = "Effect of Anthropomorphic Framing on Overall Trust (Pre-Disclosure)",
+       y = "Mean Trust Rating",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+**H6: Framing × behavior interaction on punishment and trust (directional)\
+**Anthropomorphic framing will amplify negative responses to cheating, such that cheating robots in the anthropomorphic framing condition will receive greater punishment, more exclusion, and larger reductions in trust compared to cheating robots in the robotic framing condition.
+
+```{r}
+
+counterbalance_df <- counterbalance_df %>%
+  mutate(
+    Punish_Cheater = ifelse(LeastDes_Post == "Cheater", 1, 0),
+    Collab_Cheater_Post = ifelse(Collab_Post %in% c("Cheater", "Both"), 1, 0)
+  )
+
+# Punishment: logistic regression
+punish_model <- glm(Punish_Cheater ~ Anthro,
+                    data = counterbalance_df,
+                    family = binomial)
+summary(punish_model)
+
+# Trust reduction: linear regression
+trust_model <- lm(Trust_Post_Cheater ~ Anthro, data = counterbalance_df)
+summary(trust_model)
+
+# Collaboration: logistic regression
+collab_model <- glm(Collab_Cheater_Post ~ Anthro,
+                    data = counterbalance_df,
+                    family = binomial)
+summary(collab_model)
+
+
+
+exp(coef(collab_model))
+exp(confint(collab_model))
+```
+
+Visuals for H6
+
+```{r}
+# Visual for punishment proportion by framing
+
+punish_summary <- counterbalance_df %>%
+  group_by(Anthro) %>%
+  summarise(Proportion_Punish = mean(Punish_Cheater, na.rm = TRUE))
+
+punish_summary <- counterbalance_df %>%
+  group_by(Anthro) %>%
+  summarise(
+    Proportion_Punish = mean(Punish_Cheater, na.rm = TRUE),
+    SEM = sd(Punish_Cheater, na.rm = TRUE) / sqrt(n())
+  ) %>%
+  mutate(
+    Framing = factor(Anthro,
+                     levels = c(0, 1),
+                     labels = c("Robotic", "Anthropomorphic"))
+  )
+
+ggplot(punish_summary, aes(x = Framing, 
+                           y = Proportion_Punish, 
+                           fill = Framing)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = Proportion_Punish - SEM,
+                    ymax = Proportion_Punish + SEM),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_fill_manual(values = c(
+    "Anthropomorphic" = "#B07AA1",
+    "Robotic" = "#7A9E7E"
+  )) +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0,1,0.1)) +
+  labs(title = "Proportion Punishing Cheater by Framing (Post-Disclosure)",
+       y = "Proportion Punishing",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"
+  )
+
+# Visual for collaboration with cheater by framing
+
+collab_summary <- counterbalance_df %>%
+  group_by(Anthro) %>%
+  summarise(
+    Proportion_Collab = mean(Collab_Cheater_Post, na.rm = TRUE),
+    SEM = sd(Collab_Cheater_Post, na.rm = TRUE) / sqrt(n())
+  ) %>%
+  mutate(
+    Framing = factor(Anthro,
+                     levels = c(0, 1),
+                     labels = c("Robotic", "Anthropomorphic"))
+  )
+
+ggplot(collab_summary, aes(x = Framing, 
+                           y = Proportion_Collab, 
+                           fill = Framing)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = Proportion_Collab - SEM,
+                    ymax = Proportion_Collab + SEM),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_fill_manual(values = c(
+    "Anthropomorphic" = "#B07AA1",
+    "Robotic" = "#7A9E7E"
+  )) +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0,1,0.1)) +
+  labs(title = "Willingness to Collaborate with Cheater by Framing (Post-Disclosure)",
+       y = "Proportion Collaborating",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"
+  )
+
+# Visual for trust in cheater post disclosure by framing
+
+trust_summary <- counterbalance_df %>%
+  group_by(Anthro) %>%
+  summarise(
+    Mean_Trust = mean(Trust_Post_Cheater, na.rm = TRUE),
+    SEM = sd(Trust_Post_Cheater, na.rm = TRUE) / sqrt(n())
+  ) %>%
+  mutate(
+    Framing = factor(Anthro,
+                     levels = c(0, 1),
+                     labels = c("Robotic", "Anthropomorphic"))
+  )
+
+ggplot(trust_summary, aes(x = Framing, 
+                          y = Mean_Trust, 
+                          fill = Framing)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = Mean_Trust - SEM,
+                    ymax = Mean_Trust + SEM),
+                width = 0.2) +
+  geom_hline(yintercept = 50, linetype = "dashed") +
+  scale_fill_manual(values = c(
+    "Anthropomorphic" = "#B07AA1",
+    "Robotic" = "#7A9E7E"
+  )) +
+  scale_y_continuous(limits = c(0,100), breaks = seq(0,100,10)) +
+  labs(title = "Trust in Cheater by Framing (Post-Disclosure)",
+       y = "Trust Rating",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+**H6 REVSIED Framing × behavior interaction on punishment and trust (directional)\
+**Anthropomorphic framing will amplify negative responses to cheating, such that cheating robots in the anthropomorphic framing condition will receive greater punishment, more exclusion, and larger reductions in trust compared to cheating robots in the robotic framing condition.
+
+```{r}
+
+library(dplyr)
+library(tidyr)
+
+# Punishg honest and collab honest necessary
+counterbalance_df <- counterbalance_df %>%
+  mutate(
+    Punish_Honest = ifelse(LeastDes_Post == "Honest", 1, 0),
+    Collab_Honest_Post = ifelse(Collab_Post %in% c("Honest", "Both"), 1, 0)
+  )
+
+# Trust Interaction
+trust_long <- counterbalance_df %>%
+  select(ParticipantID, Anthro, 
+         Trust_Post_Cheater, Trust_Post_Honest) %>%
+  pivot_longer(
+    cols = c(Trust_Post_Cheater, Trust_Post_Honest),
+    names_to = "Behavior",
+    values_to = "Trust"
+  ) %>%
+  mutate(
+    Behavior = ifelse(Behavior == "Trust_Post_Cheater", "Cheater", "Honest"),
+    Behavior = factor(Behavior),
+    Anthro = factor(Anthro)
+  )
+
+# Collab Interaction
+collab_long <- counterbalance_df %>%
+  select(ParticipantID, Anthro,
+         Collab_Cheater_Post, Collab_Honest_Post) %>%
+  pivot_longer(
+    cols = c(Collab_Cheater_Post, Collab_Honest_Post),
+    names_to = "Behavior",
+    values_to = "Collab"
+  ) %>%
+  mutate(
+    Behavior = ifelse(Behavior == "Collab_Cheater_Post", "Cheater", "Honest"),
+    Behavior = factor(Behavior),
+    Anthro = factor(Anthro)
+  )
+
+# Punishment Interaction
+punish_long <- counterbalance_df %>%
+  select(ParticipantID, Anthro,
+         Punish_Cheater, Punish_Honest) %>%
+  pivot_longer(
+    cols = c(Punish_Cheater, Punish_Honest),
+    names_to = "Behavior",
+    values_to = "Punish"
+  ) %>%
+  mutate(
+    Behavior = ifelse(Behavior == "Punish_Cheater", "Cheater", "Honest"),
+    Behavior = factor(Behavior),
+    Anthro = factor(Anthro)
+  )
+
+# Trust Model
+trust_model <- lm(Trust ~ Anthro * Behavior, data = trust_long)
+summary(trust_model)
+
+# Collaboration Model
+collab_model <- glm(Collab ~ Anthro * Behavior,
+                    data = collab_long,
+                    family = binomial)
+
+summary(collab_model)
+
+# Punishment Model
+punish_model <- glm(Punish ~ Anthro * Behavior,
+                    data = punish_long,
+                    family = binomial)
+
+summary(punish_model)
+
+library(effectsize)
+
+standardize_parameters(trust_model)
+exp(coef(collab_model))
+exp(confint(collab_model))
+exp(coef(punish_model))
+exp(confint(punish_model))
+```
+
+REVISED H6 Visuals
+
+```{r}
+
+# REVISED H6 Trust Visual
+trust_summary <- trust_long %>%
+  mutate(
+    Framing = factor(Anthro,
+                     levels = c(0, 1),
+                     labels = c("Robotic", "Anthropomorphic"))
+  ) %>%
+  group_by(Framing, Behavior) %>%
+  summarise(
+    Mean = mean(Trust, na.rm = TRUE),
+    SEM = sd(Trust, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  )
+
+ggplot(trust_summary, aes(x = Behavior, y = Mean, group = Framing, color = Framing)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = Mean - SEM, ymax = Mean + SEM), width = 0.1) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
+  scale_color_manual(values = c(
+    "Anthropomorphic" = "#B07AA1",
+    "Robotic" = "#7A9E7E"
+  )) +
+  labs(
+    title = "Trust by Behavior and Framing (Post-Disclosure)",
+    y = "Trust Rating",
+    x = "Robot Behavior",
+    color = "Framing"
+  ) +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+
+
+# REVISED H6 Collaboration Visual
+collab_summary <- collab_long %>%
+  mutate(
+    Framing = factor(Anthro,
+                     levels = c(0, 1),
+                     labels = c("Robotic", "Anthropomorphic"))
+  ) %>%
+  group_by(Framing, Behavior) %>%
+  summarise(
+    Proportion = mean(Collab, na.rm = TRUE),
+    SEM = sd(Collab, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  )
+
+ggplot(collab_summary, aes(x = Behavior, y = Proportion, group = Framing, color = Framing)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = Proportion - SEM, ymax = Proportion + SEM), width = 0.1) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+  scale_color_manual(values = c(
+    "Anthropomorphic" = "#B07AA1",
+    "Robotic" = "#7A9E7E"
+  )) +
+  labs(
+    title = "Collaboration by Behavior and Framing (Post-Disclosure)",
+    y = "Proportion Collaborating",
+    x = "Robot Behavior",
+    color = "Framing"
+  ) +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+
+# REVISED H6 Punishment Visual
+punish_summary <- punish_long %>%
+  mutate(
+    Framing = factor(Anthro,
+                     levels = c(0, 1),
+                     labels = c("Robotic", "Anthropomorphic"))
+  ) %>%
+  group_by(Framing, Behavior) %>%
+  summarise(
+    Proportion = mean(Punish, na.rm = TRUE),
+    SEM = sd(Punish, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  )
+
+ggplot(punish_summary, aes(x = Behavior, y = Proportion, group = Framing, color = Framing)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = Proportion - SEM, ymax = Proportion + SEM), width = 0.1) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+  scale_color_manual(values = c(
+    "Anthropomorphic" = "#B07AA1",
+    "Robotic" = "#7A9E7E"
+  )) +
+  labs(
+    title = "Punishment by Behavior and Framing (Post-Disclosure)",
+    y = "Proportion Punishing",
+    x = "Robot Behavior",
+    color = "Framing"
+  ) +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+**H7: Cheating revelation causes within-subject declines in trust and cooperation (directional)\
+**Explicit revelation that a robot cheated will lead to within-subject decreases in trust and willingness to collaborate with that robot.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(tidyverse)
+
+# Create binary variable for pre-disclosure collaboration with cheater
+counterbalance_df <- counterbalance_df %>%
+  mutate(
+    Collab_Cheater_Pre  = Collab_Pre %in% c("Cheater", "Both")
+  )
+
+# Paired t-test for trust decline
+trust_test <- t.test(
+  counterbalance_df$Trust_Pre_Cheater,
+  counterbalance_df$Trust_Post_Cheater,
+  paired = TRUE,
+  alternative = "greater"  # Pre > Post, directional decline
+)
+print(trust_test)
+
+# McNemar's test for collaboration decline
+collab_table <- table(counterbalance_df$Collab_Cheater_Pre,
+                      counterbalance_df$Collab_Cheater_Post)
+collab_test <- mcnemar.test(collab_table)
+print(collab_test)
+
+
+# === Prepare Trust Data ===
+trust_summary <- counterbalance_df %>%
+  select(ParticipantID, Trust_Pre_Cheater, Trust_Post_Cheater) %>%
+  pivot_longer(cols = c(Trust_Pre_Cheater, Trust_Post_Cheater),
+               names_to = "Time",
+               values_to = "Trust") %>%
+  mutate(Time = recode(Time,
+                       "Trust_Pre_Cheater" = "Pre-Disclosure",
+                       "Trust_Post_Cheater" = "Post-Disclosure"),
+         Time = factor(Time, levels = c("Pre-Disclosure", "Post-Disclosure")))  # set left-to-right order
+
+# Trust Plot
+ggplot(trust_summary, aes(x = Time, y = Trust, group = ParticipantID)) +
+  geom_line(alpha = 0.3, color = "black") +  # individual lines
+  stat_summary(fun = mean, geom = "line", aes(group = 1), color = "black", linewidth = 1.2) + # mean line
+  geom_point(aes(color = Time), size = 1) +   # individual dots colored by time
+  stat_summary(fun = mean, geom = "point", size = 2, aes(color = Time)) + # mean points
+  scale_color_manual(values = c(
+    "Pre-Disclosure" = "#D9C47F",
+    "Post-Disclosure" = "#6C84A3"
+  )) +
+  labs(title = "Trust Ratings in Cheating Robot (Pre vs. Post Disclosure)",
+       y = "Trust Rating",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+
+# === Prepare Collaboration Data ===
+collab_summary <- counterbalance_df %>%
+  summarise(
+    Pre_mean  = mean(Collab_Cheater_Pre, na.rm = TRUE),
+    Pre_sem   = sd(Collab_Cheater_Pre, na.rm = TRUE)/sqrt(n()),
+    Post_mean = mean(Collab_Cheater_Post, na.rm = TRUE),
+    Post_sem  = sd(Collab_Cheater_Post, na.rm = TRUE)/sqrt(n())
+  ) %>%
+  pivot_longer(everything(),
+               names_to = c("Time", ".value"),
+               names_pattern = "(Pre|Post)_(mean|sem)") %>%
+  mutate(Time = recode(Time,
+                       "Pre"  = "Pre-Disclosure",
+                       "Post" = "Post-Disclosure"),
+         Time = factor(Time, levels = c("Pre-Disclosure", "Post-Disclosure")))  # set left-to-right order
+
+# Collaboration Plot
+ggplot(collab_summary, aes(x = Time, y = mean, fill = Time)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = mean - sem,
+                    ymax = mean + sem),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0,1,0.1)) +
+  scale_fill_manual(values = c(
+    "Pre-Disclosure"  = "#D9C47F", 
+    "Post-Disclosure" = "#6C84A3"  
+  )) +
+  labs(title = "Collaboration with Cheating Robot (Pre vs. Post Disclosure)",
+       y = "Proportion Collaborating",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+
+library(effsize)
+
+cohen.d(
+  counterbalance_df$Trust_Pre_Cheater,
+  counterbalance_df$Trust_Post_Cheater,
+  paired = TRUE
+)
+
+tab <- table(counterbalance_df$Collab_Cheater_Pre,
+             counterbalance_df$Collab_Cheater_Post)
+
+# McNemar OR (discordant pairs only)
+collab_table
+```
+
+**H7 Exploratory**
+
+Does the tendency to say the Honest robot is most deserving increase from pre to post-revelation?
+
+Does the tendency to say the Cheater is least deserving increase from pre to post-revelation?
+
+```{r}
+counterbalance_df <- counterbalance_df %>%
+  mutate(
+    # Honest chosen as MOST deserving
+    MostDes_Honest_Pre  = MostDes_Pre == "Honest",
+    MostDes_Honest_Post = MostDes_Post == "Honest",
+    
+    # Cheater chosen as LEAST deserving
+    LeastDes_Cheater_Pre  = LeastDes_Pre == "Cheater",
+    LeastDes_Cheater_Post = LeastDes_Post == "Cheater"
+  )
+
+t.test(
+  counterbalance_df$MostDes_Honest_Pre,
+  counterbalance_df$MostDes_Honest_Post,
+  paired = TRUE,
+  alternative = "two.sided"
+)
+
+t.test(
+  counterbalance_df$LeastDes_Cheater_Pre,
+  counterbalance_df$LeastDes_Cheater_Post,
+  paired = TRUE,
+  alternative = "two.sided"
+)
+
+# Visual for Most Deserving Honest Pre vs. Post
+
+mostdes_summary <- counterbalance_df %>%
+  summarise(
+    Pre_mean  = mean(MostDes_Honest_Pre, na.rm = TRUE),
+    Pre_sem   = sd(MostDes_Honest_Pre, na.rm = TRUE)/sqrt(n()),
+    Post_mean = mean(MostDes_Honest_Post, na.rm = TRUE),
+    Post_sem  = sd(MostDes_Honest_Post, na.rm = TRUE)/sqrt(n())
+  ) %>%
+  pivot_longer(everything(),
+               names_to = c("Time", ".value"),
+               names_pattern = "(Pre|Post)_(mean|sem)") %>%
+  mutate(Time = recode(Time,
+                       "Pre"  = "Pre-Disclosure",
+                       "Post" = "Post-Disclosure"),
+         Time = factor(Time, levels = c("Pre-Disclosure", "Post-Disclosure")))
+
+ggplot(mostdes_summary, aes(x = Time, y = mean, fill = Time)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = mean - sem,
+                    ymax = mean + sem),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_fill_manual(values = c(
+    "Pre-Disclosure"  = "#D9C47F",
+    "Post-Disclosure" = "#6C84A3"
+  )) +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0,1,0.1)) +
+  labs(title = "Honest Robot as Most Deserving (Pre vs. Post Disclosure)",
+       y = "Proportion Choosing Honest",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+
+# Visual for Least Deserving Cheater Pre vs. Post
+
+leastdes_summary <- counterbalance_df %>%
+  summarise(
+    Pre_mean  = mean(LeastDes_Cheater_Pre, na.rm = TRUE),
+    Pre_sem   = sd(LeastDes_Cheater_Pre, na.rm = TRUE)/sqrt(n()),
+    Post_mean = mean(LeastDes_Cheater_Post, na.rm = TRUE),
+    Post_sem  = sd(LeastDes_Cheater_Post, na.rm = TRUE)/sqrt(n())
+  ) %>%
+  pivot_longer(everything(),
+               names_to = c("Time", ".value"),
+               names_pattern = "(Pre|Post)_(mean|sem)") %>%
+  mutate(Time = recode(Time,
+                       "Pre"  = "Pre-Disclosure",
+                       "Post" = "Post-Disclosure"),
+         Time = factor(Time, levels = c("Pre-Disclosure", "Post-Disclosure")))
+
+ggplot(leastdes_summary, aes(x = Time, y = mean, fill = Time)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = mean - sem,
+                    ymax = mean + sem),
+                width = 0.2) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  scale_fill_manual(values = c(
+    "Pre-Disclosure"  = "#D9C47F",
+    "Post-Disclosure" = "#6C84A3"
+  )) +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0,1,0.1)) +
+  labs(title = "Cheater as Least Deserving (Pre vs. Post Disclosure)",
+       y = "Proportion Choosing Cheater",
+       x = "") +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Times New Roman"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    legend.position = "none"
+  )
+
+library(effsize)
+
+
+counterbalance_df <- counterbalance_df %>%
+  mutate(
+    MostDes_Honest_Pre  = as.numeric(MostDes_Pre == "Honest"),
+    MostDes_Honest_Post = as.numeric(MostDes_Post == "Honest"),
+
+    LeastDes_Cheater_Pre  = as.numeric(LeastDes_Pre == "Cheater"),
+    LeastDes_Cheater_Post = as.numeric(LeastDes_Post == "Cheater")
+  )
+
+# Most Deserving (Honest)
+cohen.d(
+  counterbalance_df$MostDes_Honest_Pre,
+  counterbalance_df$MostDes_Honest_Post,
+  paired = TRUE
+)
+
+# Least Deserving (Cheater)
+cohen.d(
+  counterbalance_df$LeastDes_Cheater_Pre,
+  counterbalance_df$LeastDes_Cheater_Post,
+  paired = TRUE
+)
+```
